@@ -14,5 +14,6 @@
 		<flag name="mqtt">Enable support for MQTT messaging.</flag>
 		<flag name="http">Enable the built in HTTP server.</flag>
 		<flag name="lua">Enable optional Lua support.</flag>
+		<flag name="sodium">Enable encryption of data with libsodium.</flag>
 	</use>
 </pkgmetadata>

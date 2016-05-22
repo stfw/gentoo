@@ -1,0 +1,17 @@
+#!/sbin/runscript
+
+depend() {
+	need net
+}
+
+start() {
+	ebegin "Starting ${SVCNAME}"
+	start-stop-daemon --start --exec /usr/sbin/${SVCNAME} --background --make-pidfile --pidfile /var/run/${SVCNAME}.pid
+	eend $?
+}
+
+stop() {
+	ebegin "Stopping ${SVCNAME}"
+	start-stop-daemon --stop --exec /usr/sbin/${SVCNAME} --pidfile /var/run/${SVCNAME}.pid
+	eend $?
+}

@@ -1,0 +1,13 @@
+--- recorder.c.orig	2016-03-07 09:43:56.000000000 +0000
++++ recorder.c	2016-05-15 19:44:58.018686612 +0100
+@@ -1646,8 +1646,10 @@
+ 				sleep(10);
+ 				mosquitto_reconnect(mosq);
+ 			}
++#ifdef WITH_HTTP
+ 		} else {
+ 			http_pollms = 10000;
++#endif
+ 		}
+ #endif
+ #ifdef WITH_HTTP

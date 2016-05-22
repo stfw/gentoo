@@ -1,0 +1,16 @@
+[Unit]
+Description=OwnTracks Recorder
+
+[Service]
+Type=simple
+User=owntracks
+WorkingDirectory=/
+ExecStart=/usr/sbin/ot-recorder
+Restart=always
+RestartSec=60
+StandardOutput=null
+StandardError=syslog
+SyslogIdentifier=ot-recorder
+
+[Install]
+WantedBy=multi-user.target

@@ -3,9 +3,8 @@
 # $Id$
 
 EAPI="6"
-#PYTHON_COMPAT=( python2_7 )
 
-#inherit eutils systemd user python-any-r1
+inherit eutils user systemd #multilib
 
 DESCRIPTION="Recorder storing and accessing location data published by the OwnTracks apps."
 HOMEPAGE="http://owntracks.org/ https://github.com/owntracks/recorder"
@@ -14,90 +13,65 @@ SRC_URI="https://github.com/owntracks/recorder/archive/${PV}.tar.gz -> recorder-
 LICENSE="GPL-2+"
 SLOT="0"
 KEYWORDS="~amd64"
-IUSE="mqtt http lua"
+IUSE="+mqtt http lua sodium"
+REQUIRED_USE="|| ( mqtt http )"
 S="${WORKDIR}/recorder-${PV}"
 
-#RDEPEND="tcpd? ( sys-apps/tcp-wrappers )
-#	ssl? ( dev-libs/openssl:0= )"
 DEPEND="${RDEPEND}
 	net-misc/curl
 	dev-libs/libconfig
 	mqtt? ( app-misc/mosquitto )
-	lua? ( dev-lang/lua )"
-#	${PYTHON_DEPS}
-#	srv? ( net-dns/c-ares )"
-#
+	lua? ( dev-lang/lua )
+	sodium? ( dev-libs/libsodium )"
+
 #LIBDIR=$(get_libdir)
-#QA_PRESTRIPPED="/usr/sbin/mosquitto
-#	/usr/bin/mosquitto_passwd
-#	/usr/bin/mosquitto_sub
-#	/usr/bin/mosquitto_pub
-#	/usr/${LIBDIR}/libmosquittopp.so.1
-#	/usr/${LIBDIR}/libmosquitto.so.1"
-#
-#pkg_setup() {
-#	enewgroup mosquitto
-#	enewuser mosquitto -1 -1 -1 mosquitto
-#}
-#
-#src_prepare() {
-#	epatch "${FILESDIR}/${P}-conditional-tests.patch"
-#	if use persistence; then
-#		sed -i -e "s:^#autosave_interval:autosave_interval:" \
-#			-e "s:^#persistence false$:persistence true:" \
-#			-e "s:^#persistence_file:persistence_file:" \
-#			-e "s:^#persistence_location$:persistence_location /var/lib/mosquitto/:" \
-#			mosquitto.conf || die
-#	fi
-#	python_setup
-#	python_fix_shebang test
-#}
-#
-#src_configure() {
-#	makeopts=(
-#		"LIB_SUFFIX=${LIBDIR:3}"
-#		"WITH_BRIDGE=$(usex bridge)"
-#		"WITH_PERSISTENCE=$(usex persistence)"
-#		"WITH_SRV=$(usex srv)"
-#		"WITH_TLS=$(usex ssl)"
-#		"WITH_WRAP=$(usex tcpd)"
-#	)
-#	einfo "${makeopts[@]}"
-#}
-#
-#src_compile() {
-#	emake "${makeopts[@]}"
-#}
-#
-#src_test() {
-#	emake "${makeopts[@]}" test
-#}
-#
-#src_install() {
-#	emake "${makeopts[@]}" DESTDIR="${D}" prefix=/usr install
-#	keepdir /var/lib/mosquitto
-#	fowners mosquitto:mosquitto /var/lib/mosquitto
-#	dodoc readme.md CONTRIBUTING.md ChangeLog.txt
-#	doinitd "${FILESDIR}"/mosquitto
-#	insinto /etc/mosquitto
-#	doins mosquitto.conf
-#	systemd_dounit "${FILESDIR}/mosquitto.service"
-#
-#	if use examples; then
-#		docompress -x "/usr/share/doc/${PF}/examples"
-#		insinto "/usr/share/doc/${PF}/examples"
-#		doins -r examples/*
-#	fi
-#}
-#
-#pkg_postinst() {
-#	elog ""
-#	elog "The Python module has been moved out of mosquitto."
-#	elog "See http://mosquitto.org/documentation/python/"
-#	elog ""
-#	elog "To start the mosquitto daemon at boot, add it to the default runlevel with:"
-#	elog ""
-#	elog "    rc-update add mosquitto default"
-#	elog "    or"
-#	elog "    systemctl enable mosquitto"
-#}
+
+pkg_setup() {
+	enewgroup owntracks
+	enewuser owntracks -1 -1 -1 owntracks
+}
+
+src_prepare() {
+	cp config.mk.in config.mk
+	epatch "${FILESDIR}/no-http.patch"
+	sed -i 's:^# OTR_TOPICS="owntracks/+/+":OTR_TOPICS="owntracks/+/+":' etc/ot-recorder.default
+	default
+}
+
+src_configure() {
+	sed -e "s:INSTALLDIR = /usr/local:INSTALLDIR = /usr\nMAKEOPTS = -j1:" \
+		-e "s:CONFIGFILE = /etc/defaults/ot-recorder:CONFIGFILE = /etc/ot-recorder:" \
+		-i config.mk
+
+	makeopts=(
+		"WITH_MQTT=$(usex mqtt)"
+		"WITH_HTTP=$(usex http)"
+		"WITH_LUA=$(usex lua)"
+		"WITH_ENCRYPT=$(usex sodium)"
+	)
+
+	einfo "${makeopts[@]}"
+}
+
+src_compile() {
+	emake -j 1 "${makeopts[@]}"
+}
+
+src_test() {
+	emake "${makeopts[@]}" test
+}
+
+src_install() {
+	emake "${makeopts[@]}" DESTDIR="${D}" prefix=/usr install
+
+	keepdir /var/spool/owntracks/recorder/store
+	use http && keepdir /var/spool/owntracks/recorder/htdocs
+	fowners -R owntracks:owntracks /var/spool/owntracks/recorder
+	dodoc README.md Changelog
+	doinitd "${FILESDIR}/ot-recorder"
+	systemd_dounit "${FILESDIR}/ot-recorder.service"
+}
+
+pkg_preinst() {
+	ot-recorder --initialize
+}
