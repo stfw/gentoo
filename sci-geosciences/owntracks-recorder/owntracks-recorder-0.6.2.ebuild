@@ -6,7 +6,7 @@ EAPI="6"
 
 inherit eutils user systemd #multilib
 
-DESCRIPTION="Recorder storing and accessing location data published by the OwnTracks apps."
+DESCRIPTION="Recorder for storing and accessing location data published by OwnTracks apps."
 HOMEPAGE="http://owntracks.org/ https://github.com/owntracks/recorder"
 SRC_URI="https://github.com/owntracks/recorder/archive/${PV}.tar.gz -> recorder-${PV}.tar.gz"
 
@@ -24,8 +24,6 @@ DEPEND="${RDEPEND}
 	lua? ( dev-lang/lua )
 	sodium? ( dev-libs/libsodium )"
 
-#LIBDIR=$(get_libdir)
-
 pkg_setup() {
 	enewgroup owntracks
 	enewuser owntracks -1 -1 -1 owntracks
@@ -34,14 +32,14 @@ pkg_setup() {
 src_prepare() {
 	cp config.mk.in config.mk
 	epatch "${FILESDIR}/no-http.patch"
-	sed -i 's:^# OTR_TOPICS="owntracks/+/+":OTR_TOPICS="owntracks/+/+":' etc/ot-recorder.default
+	sed -i 's:^# OTR_TOPICS="owntracks/+/+":OTR_TOPICS="owntracks/+/+":' etc/ot-recorder.default || die
 	default
 }
 
 src_configure() {
 	sed -e "s:INSTALLDIR = /usr/local:INSTALLDIR = /usr\nMAKEOPTS = -j1:" \
 		-e "s:CONFIGFILE = /etc/defaults/ot-recorder:CONFIGFILE = /etc/ot-recorder:" \
-		-i config.mk
+		-i config.mk || die
 
 	makeopts=(
 		"WITH_MQTT=$(usex mqtt)"
@@ -57,10 +55,6 @@ src_compile() {
 	emake -j 1 "${makeopts[@]}"
 }
 
-src_test() {
-	emake "${makeopts[@]}" test
-}
-
 src_install() {
 	emake "${makeopts[@]}" DESTDIR="${D}" prefix=/usr install
 
@@ -72,6 +66,15 @@ src_install() {
 	systemd_dounit "${FILESDIR}/ot-recorder.service"
 }
 
-pkg_preinst() {
-	ot-recorder --initialize
+pkg_postinst() {
+	if [ ! -f /var/spool/owntracks/recorder/store/ghash/data.mdb ]; then
+		elog "You must initialise the recorder database with"
+		elog "    emerge --config ${CATEGORY}/${PN}"
+		elog ""
+	fi
+}
+
+pkg_config() {
+	"${ROOT}"/usr/sbin/ot-recorder --initialize
+	chown -R owntracks:owntracks /var/spool/owntracks/recorder/store/ghash
 }
