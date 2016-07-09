@@ -7,7 +7,7 @@ EAPI="6"
 inherit systemd
 
 HOMEPAGE="https://www.zerotier.com/"
-DESCRIPTION="ZeroTier is a software-based managed Ethernet switch for planet Earth."
+DESCRIPTION="A software-based managed Ethernet switch for planet Earth."
 SRC_URI="https://github.com/zerotier/ZeroTierOne/archive/${PV}.tar.gz"
 LICENSE="GPL-3"
 SLOT="0"
@@ -19,17 +19,25 @@ RDEPEND="net-libs/http-parser
 	net-libs/miniupnpc
 	net-libs/libnatpmp
 	dev-libs/json-glib"
-
-DEPEND="${RDEPEND}
-	app-text/ronn"
+DEPEND="${RDEPEND}"
 
 QA_PRESTRIPPED="/usr/sbin/zerotier-one"
+
+src_prepare(){
+	default
+	sed -i 's:^\t\(.*/usr/share/man/man.*\):\t#\1:' make-linux.mk || die
+}
+
+src_compile() {
+	emake one
+}
 
 src_install() {
 	emake DESTDIR="${D}" install
 	dodoc README.md AUTHORS.md
 	doinitd "${FILESDIR}"/zerotier-one
 	systemd_dounit "${FILESDIR}"/zerotier-one.service
+	doman "${FILESDIR}/${PV}"/*
 }
 
 pkg_postinst() {
