@@ -8,11 +8,11 @@ inherit systemd
 
 HOMEPAGE="https://www.zerotier.com/"
 DESCRIPTION="A software-based managed Ethernet switch for planet Earth."
-SRC_URI="https://github.com/zerotier/ZeroTierOne/archive/${PV}.tar.gz"
+SRC_URI="https://github.com/zerotier/ZeroTierOne/archive/${PV}.tar.gz -> zerotier-${PV}.tar.gz
+	https://github.com/stfw/zt-manpages/archive/${PV}.tar.gz -> zt-manpages-${PV}.tar.gz"
 LICENSE="GPL-3"
 SLOT="0"
 KEYWORDS="~amd64 ~x86"
-IUSE=""
 S="${WORKDIR}/ZeroTierOne-${PV}"
 
 RDEPEND="net-libs/http-parser
@@ -37,7 +37,7 @@ src_install() {
 	dodoc README.md AUTHORS.md
 	doinitd "${FILESDIR}"/zerotier-one
 	systemd_dounit "${FILESDIR}"/zerotier-one.service
-	doman "${FILESDIR}/${PV}"/*
+	doman "${WORKDIR}/zt-manpages-${PV}"/*.?
 }
 
 pkg_postinst() {
